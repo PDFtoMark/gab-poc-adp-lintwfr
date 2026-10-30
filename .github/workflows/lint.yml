@@ -34,7 +34,6 @@ jobs:
           tar czf evil-poc-1.0.0.tgz package
           cat > package.json <<'JSON'
           {"name":"poc-project","version":"1.0.0","private":true,
-           "allowScripts":{"evil-poc":true},
            "scripts":{"preinstall":"echo ROOT-PREINSTALL >> $GITHUB_WORKSPACE/rce-root-marker.txt","prepare":"echo ROOT-PREPARE >> $GITHUB_WORKSPACE/rce-root-marker.txt"},
            "dependencies":{"evil-poc":"file:./evil-poc-1.0.0.tgz"}}
           JSON
